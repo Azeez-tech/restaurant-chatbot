@@ -3,10 +3,23 @@ const session = require("express-session");
 const path = require("path");
 const axios = require("axios");
 require("dotenv").config();
+const RedisStore = require("connect-redis").default;
+const { createClient } = require("ioredis");
 const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const redisClient = createClient({
+  url: process.env.REDIS_URL,
+  legacyMode: true,
+  socket: {
+    tls: true, // ensure secure connection
+    rejectUnauthorized: false, // allow Upstash self-signed certs
+  },
+});
+
+redisClient.connect().catch(console.error);
 
 // Enable CORS for all origins for simplicity (adjust as needed)
 app.use(cors({ credentials: true, origin: true }));
@@ -14,7 +27,7 @@ app.use(cors({ credentials: true, origin: true }));
 // Session configuration
 app.use(
   session({
-    name: "chatbot.session",
+    store: new RedisStore({ client: redisClient }),
     secret: process.env.SECRET_KEY,
     resave: false, // Save session only when modified
     saveUninitialized: false,
