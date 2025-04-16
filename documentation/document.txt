@@ -1,0 +1,117 @@
+🍽️ Restaurant ChatBot – User Guide
+
+Welcome to the Restaurant ChatBot! This interactive chatbot allows you to place food orders, check your current or past orders, and proceed to payment in a chat-like interface.
+
+────────────────────────────────────────────
+
+📍 How to Access the Bot
+
+1. Start the server  
+   In your terminal, navigate to the project folder and run:
+   node server.js
+
+2. Open the chat interface  
+   Visit: http://localhost:3000
+
+────────────────────────────────────────────
+
+💬 Bot Commands
+
+🟢 Main Menu  
+When the chat starts, you'll see:
+
+Bot: Welcome! Please choose an option:  
+1. Place Order  
+99. Checkout  
+98. Order History  
+97. Current Order  
+0. Cancel Order
+
+You can type any of these numbers (e.g., 1) and press **Send** or hit **Enter**.
+
+────────────────────────────────────────────
+
+🛒 Placing an Order
+
+Step 1: Type `1` to start a new order  
+The bot will respond with the menu:
+
+Bot: Menu Items:  
+1. Jollof Rice - ₦1,500  
+2. Fried Chicken - ₦2,000  
+3. Pounded Yam - ₦2,500  
+Enter item numbers (1–3) or type `"done"` to finish
+
+Step 2: Add items by typing their number  
+For example:  
+You: 1  
+→ The bot confirms the item and shows your updated order.
+
+You can continue adding more items.
+
+Step 3: Type `done` when you're finished  
+→ This takes you back to the main menu.
+
+────────────────────────────────────────────
+
+📦 Managing Your Order
+
+🟡 View Current Order  
+Type:
+97  
+→ Shows what’s currently in your cart.
+
+🔴 Cancel Current Order  
+Type:
+0  
+→ Cancels your current order.
+
+🕘 View Order History  
+Type:
+98  
+→ Displays all your previously placed orders.
+
+────────────────────────────────────────────
+
+💳 Checking Out & Payment
+
+Step 1: Type `99` to checkout  
+→ If you have items in your order, the bot shows the total and proceeds to payment.
+
+Step 2: You’re redirected to Paystack  
+→ Complete your payment securely through their interface.
+
+⚠️ Make sure you're using a test Paystack secret key and your internet is active.
+
+────────────────────────────────────────────
+
+💡 Tips
+
+- Always type `done` when you finish ordering.
+- You can check current or past orders anytime.
+- If the session expires, just refresh the page to start over.
+- Use test Paystack keys for demo transactions.
+
+────────────────────────────────────────────
+
+🧪 Sample Inputs
+
+| Input | What it Does             |
+|-------|--------------------------|
+| 1     | Start placing an order   |
+| 2     | Add Fried Chicken        |
+| done  | Finish ordering          |
+| 97    | Show current order       |
+| 98    | Show order history       |
+| 99    | Checkout and pay         |
+| 0     | Cancel current order     |
+
+────────────────────────────────────────────
+
+✅ Final Notes
+
+- The bot uses session tracking to remember your state.
+- You can extend it to support delivery info, special instructions, and more.
+- Clean, simple, and great for learning chatbot + payment integration with Node.js.
+
+────────────────────────────────────────────
