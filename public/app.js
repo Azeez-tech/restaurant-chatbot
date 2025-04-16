@@ -71,38 +71,3 @@ async function initiatePayment() {
     addMessage("Bot: Payment initialization failed", "bot");
   }
 }
-
-async function checkPaymentStatus() {
-  try {
-    const response = await fetch("/payment-status", {
-      credentials: "include",
-    });
-
-    const result = await response.json();
-
-    if (result.paid) {
-      addMessage(
-        "Bot: Payment successful! Your order is being processed",
-        "bot"
-      );
-      localStorage.removeItem("paymentSession");
-    } else {
-      addMessage(
-        "Bot: Payment verification failed. Please contact support",
-        "bot"
-      );
-    }
-
-    // Force session refresh
-    window.location.reload();
-  } catch (error) {
-    console.error("Status check error:", error);
-  }
-}
-
-// Add payment status endpoint
-app.get("/payment-status", (req, res) => {
-  res.json({
-    paid: !!req.session?.payment?.status,
-  });
-});
