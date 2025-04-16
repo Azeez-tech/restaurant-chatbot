@@ -38,6 +38,11 @@ app.use(
 );
 
 // Parse JSON and URL-encoded payloads
+app.use((req, res, next) => {
+  console.log("💡 Incoming Cookie Header:", req.headers.cookie);
+  console.log("💡 Session ID:", req.sessionID);
+  next();
+});
 
 // Initialize session values once
 app.use((req, res, next) => {
