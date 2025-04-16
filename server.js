@@ -20,18 +20,18 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(
   session({
     secret: process.env.SECRET_KEY,
-    resave: false, // Save session only when modified
+    resave: false,
     saveUninitialized: false,
     rolling: true,
     store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
+      mongoUrl: process.env.MONGODB_URI,
       collectionName: "sessions",
-      ttl: 24 * 60 * 60, // 1 day in seconds
+      ttl: 24 * 60 * 60, // 1 day
     }),
     cookie: {
-      secure: true,
+      secure: true, // ✅ Required because Render uses HTTPS
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "Lax", // ✅ Perfect for same-origin deployments
       maxAge: 24 * 60 * 60 * 1000,
     },
   })
