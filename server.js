@@ -35,7 +35,7 @@ app.use(
     cookie: {
       secure: true, // Required for Render's HTTPS
       httpOnly: true,
-      sameSite: "None",
+      sameSite: "lax",
       domain: "https://restaurant-chatbot-6mu4.onrender.com/",
       maxAge: 24 * 60 * 60 * 1000,
     },
@@ -103,7 +103,7 @@ function handleMainState(input, session, response) {
         }
       );
       break;
-    /*case "99":
+    case "99":
       if (session.currentOrder.length === 0) {
         response.messages.push({ text: "No order to place", type: "bot" });
       } else {
@@ -122,22 +122,8 @@ function handleMainState(input, session, response) {
           payment: true,
         });
       }
-      break;*/
-    // In your checkout handler
-    case "99":
-      if (session.currentOrder.length > 0) {
-        response.messages.push({
-          text: "Proceeding to payment...",
-          type: "bot",
-          payment: true,
-        });
-      } else {
-        response.messages.push({
-          text: "No items to purchase. Add items first.",
-          type: "bot",
-        });
-      }
       break;
+
     case "98":
       if (session.orderHistory.length === 0) {
         response.messages.push({
