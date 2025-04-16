@@ -256,13 +256,15 @@ app.post("/message", async (req, res) => {
 
 // Payment initiation endpoint
 // server.js - Payment Endpoints
-await new Promise((resolve, reject) => {
-  req.session.save((err) => {
-    if (err) reject(err);
-    console.log("Current Order:", req.session.currentOrder);
-    resolve();
+async function saveSession() {
+  await new Promise((resolve, reject) => {
+    req.session.save((err) => {
+      if (err) reject(err);
+      console.log("Current Order:", req.session.currentOrder);
+      resolve();
+    });
   });
-});
+}
 
 app.use("/initiate-payment", (req, res, next) => {
   if (!req.session.currentOrder || req.session.currentOrder.length === 0) {
@@ -280,6 +282,7 @@ app.use("/initiate-payment", (req, res, next) => {
 
 app.post("/initiate-payment", async (req, res) => {
   try {
+    await saveSession();
     if (!req.session.currentOrder?.length) {
       return res.status(400).json({
         error: "No items in current order",
