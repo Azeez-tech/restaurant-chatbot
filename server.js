@@ -25,7 +25,7 @@ app.use(
     saveUninitialized: false,
     rolling: true,
     cookie: {
-      secure: false, // Set true if using HTTPS in production
+      secure: process.env.NODE_ENV === "production", // Set true if using HTTPS in production
       httpOnly: true,
       sameSite: "Lax",
       maxAge: 24 * 60 * 60 * 1000,
