@@ -243,106 +243,8 @@ app.post("/message", async (req, res) => {
 // Payment initiation endpoint
 // server.js - Payment Endpoints
 
-app.post("/initiate-payment", async (req, res) => {
-  try {
-    if (!req.session.currentOrder?.length) {
-      return res.status(400).json({
-        error: "No items in current order",
-      });
-    }
-
-    // Calculate amount properly
-    const amount =
-      req.session.currentOrder.reduce((sum, item) => sum + item.price, 0) * 100; // Convert to kobo
-
-    const paymentData = {
-      amount: amount,
-      email: "customer@example.com",
-      callback_url: `${process.env.PAYSTACK_CALLBACK_URL}/?sessionId=${req.sessionID}`,
-      metadata: {
-        sessionId: req.sessionID,
-        ip: req.ip,
-      },
-    };
-    // Force session save with extended TTL
-    req.session.cookie.maxAge = 48 * 60 * 60 * 1000; // 48 hours
-    await req.session.save();
-
-    const response = await axios.post(
-      "https://api.paystack.co/transaction/initialize",
-      paymentData,
-      {
-        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
-      }
-    );
-
-    res.json({
-      authorization_url: response.data.data.authorization_url,
-      sessionId: req.sessionID,
-    });
-  } catch (error) {
-    console.error("Payment initiation error:", error);
-    res.status(500).json({ error: "Payment initialization failed" });
-  }
-});
-
-app.get("/payment-callback", async (req, res) => {
-  try {
-    const { sessionId } = req.query;
-
-    // Rebuild session from storage
-    req.sessionStore.get(sessionId, async (err, session) => {
-      if (err || !session) {
-        return res.redirect("/?error=session_expired");
-      }
-
-      // Verify payment with Paystack
-      const verification = await axios.get(
-        `https://api.paystack.co/transaction/verify/${req.query.trxref}`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          },
-        }
-      );
-
-      if (verification.data.data.status === "success") {
-        // Regenerate session to prevent fixation
-        req.session.regenerate(async (err) => {
-          Object.assign(req.session, {
-            ...session,
-            payment: {
-              status: "completed",
-              reference: verification.data.data.reference,
-              amount: verification.data.data.amount,
-            },
-          });
-
-          await req.session.save();
-
-          // Set fresh cookies in response
-          res.setHeader("Set-Cookie", [
-            `connect.sid=${
-              req.sessionID
-            }; Path=/; Secure; SameSite=None; HttpOnly; Max-Age=${
-              24 * 60 * 60
-            }`,
-          ]);
-
-          res.redirect("/?payment=success");
-        });
-      } else {
-        res.redirect("/?payment=failed");
-      }
-    });
-  } catch (error) {
-    console.error("Callback error:", error);
-    res.redirect("/?payment=error");
-  }
-});
-
 // Payment initialization (using Paystack)
-/*app.post("/initiate-payment", async (req, res) => {
+app.post("/initiate-payment", async (req, res) => {
   try {
     const paystackRes = await axios.post(
       "https://api.paystack.co/transaction/initialize",
@@ -369,7 +271,6 @@ app.get("/payment-callback", async (req, res) => {
 app.get("/payment-callback", (req, res) => {
   res.redirect("/");
 });
-*/
 
 // Start the server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -56,7 +56,7 @@ function addMessage(text, type) {
 }
 
 // Initiate payment if required
-/*async function initiatePayment() {
+async function initiatePayment() {
   try {
     const response = await fetch("/initiate-payment", {
       method: "POST",
@@ -66,38 +66,6 @@ function addMessage(text, type) {
     });
     const data = await response.json();
     window.location.href = data.authorization_url;
-  } catch (error) {
-    console.error("Payment error:", error);
-    addMessage("Bot: Payment initialization failed", "bot");
-  }
-}
-*/
-
-// public/app.js - Payment Flow
-let paymentWindow = null;
-
-async function initiatePayment() {
-  try {
-    const response = await fetch("/initiate-payment", {
-      method: "POST",
-      credentials: "include",
-    });
-
-    const { authorization_url, sessionId } = await response.json();
-
-    // Store session ID in localStorage
-    localStorage.setItem("paymentSession", sessionId);
-
-    // Open payment window with same origin
-    paymentWindow = window.open(authorization_url, "PaymentWindow");
-
-    // Start payment status polling
-    const pollInterval = setInterval(async () => {
-      if (paymentWindow.closed) {
-        clearInterval(pollInterval);
-        checkPaymentStatus();
-      }
-    }, 1000);
   } catch (error) {
     console.error("Payment error:", error);
     addMessage("Bot: Payment initialization failed", "bot");
