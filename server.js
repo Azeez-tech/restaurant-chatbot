@@ -3,8 +3,7 @@ const session = require("express-session");
 const path = require("path");
 const axios = require("axios");
 require("dotenv").config();
-const ConnectRedis = require("connect-redis");
-const RedisStore = ConnectRedis(session);
+const RedisStore = require("connect-redis").RedisStore;
 const { createClient } = require("ioredis");
 const cors = require("cors");
 
