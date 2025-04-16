@@ -29,14 +29,12 @@ app.use(
       mongoUrl: process.env.MONGO_URI,
       collectionName: "sessions",
       ttl: 24 * 60 * 60, // Match cookie maxAge
-      autoRemove: "interval",
-      autoRemoveInterval: 60,
+      touchAfter: 1800,
     }),
     cookie: {
       secure: true, // Required for Render's HTTPS
       httpOnly: true,
       sameSite: "lax",
-      domain: "https://restaurant-chatbot-6mu4.onrender.com/",
       maxAge: 24 * 60 * 60 * 1000,
     },
     proxy: true, // Required for Render's proxy
@@ -56,26 +54,26 @@ app.use((req, res, next) => {
 });
 
 // Force session save after each request
-app.use((req, res, next) => {
-  res.on("finish", async () => {
-    try {
-      await new Promise((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) {
-            console.error("Session save error:", err);
-            reject(err);
-          } else {
-            console.log("Session persisted:", req.sessionID);
-            resolve();
-          }
-        });
-      });
-    } catch (err) {
-      console.error("Final session save failed:", err);
-    }
-  });
-  next();
-});
+// app.use((req, res, next) => {
+//   res.on("finish", async () => {
+//     try {
+//       await new Promise((resolve, reject) => {
+//         req.session.save((err) => {
+//           if (err) {
+//             console.error("Session save error:", err);
+//             reject(err);
+//           } else {
+//             console.log("Session persisted:", req.sessionID);
+//             resolve();
+//           }
+//         });
+//       });
+//     } catch (err) {
+//       console.error("Final session save failed:", err);
+//     }
+//   });
+//   next();
+// });
 
 // Define menu items
 const menuItems = [
