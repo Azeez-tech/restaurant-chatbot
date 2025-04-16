@@ -217,8 +217,7 @@ app.post("/initiate-payment", async (req, res) => {
       {
         amount: req.body.amount * 100, // Convert to kobo
         email: "customer@example.com",
-        callback_url:
-          "https://restaurant-chatbot-6mu4.onrender.com/payment-callback",
+        callback_url: process.env.PAYSTACK_CALLBACK_UR,
       },
       {
         headers: {
