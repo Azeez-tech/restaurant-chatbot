@@ -3,7 +3,8 @@ const session = require("express-session");
 const path = require("path");
 const axios = require("axios");
 require("dotenv").config();
-const RedisStore = require("connect-redis").default;
+const ConnectRedis = require("connect-redis");
+const RedisStore = ConnectRedis(session);
 const { createClient } = require("ioredis");
 const cors = require("cors");
 
@@ -12,7 +13,6 @@ const PORT = process.env.PORT || 3000;
 
 const redisClient = createClient({
   url: process.env.REDIS_URL,
-  legacyMode: true,
   socket: {
     tls: true, // ensure secure connection
     rejectUnauthorized: false, // allow Upstash self-signed certs
