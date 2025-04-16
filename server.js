@@ -103,7 +103,7 @@ function handleMainState(input, session, response) {
         }
       );
       break;
-    case "99":
+    /*case "99":
       if (session.currentOrder.length === 0) {
         response.messages.push({ text: "No order to place", type: "bot" });
       } else {
@@ -120,6 +120,21 @@ function handleMainState(input, session, response) {
           )}. Proceed to payment`,
           type: "bot",
           payment: true,
+        });
+      }
+      break;*/
+    // In your checkout handler
+    case "99":
+      if (session.currentOrder.length > 0) {
+        response.messages.push({
+          text: "Proceeding to payment...",
+          type: "bot",
+          payment: true,
+        });
+      } else {
+        response.messages.push({
+          text: "No items to purchase. Add items first.",
+          type: "bot",
         });
       }
       break;
@@ -241,16 +256,42 @@ app.post("/message", async (req, res) => {
 
 // Payment initiation endpoint
 // server.js - Payment Endpoints
+await new Promise((resolve, reject) => {
+  req.session.save((err) => {
+    if (err) reject(err);
+    console.log("Current Order:", req.session.currentOrder);
+    resolve();
+  });
+});
+
+app.use("/initiate-payment", (req, res, next) => {
+  if (!req.session.currentOrder || req.session.currentOrder.length === 0) {
+    return res.status(400).json({
+      messages: [
+        {
+          text: "No items to purchase. Please add items first.",
+          type: "bot",
+        },
+      ],
+    });
+  }
+  next();
+});
+
 app.post("/initiate-payment", async (req, res) => {
   try {
-    // Force session save with extended TTL
-    req.session.cookie.maxAge = 48 * 60 * 60 * 1000; // 48 hours
-    await req.session.save();
+    if (!req.session.currentOrder?.length) {
+      return res.status(400).json({
+        error: "No items in current order",
+      });
+    }
+
+    // Calculate amount properly
+    const amount =
+      req.session.currentOrder.reduce((sum, item) => sum + item.price, 0) * 100; // Convert to kobo
 
     const paymentData = {
-      amount:
-        req.session.currentOrder.reduce((sum, item) => sum + item.price, 0) *
-        100,
+      amount: amount,
       email: "customer@example.com",
       callback_url: `${process.env.PAYSTACK_CALLBACK_URL}/?sessionId=${req.sessionID}`,
       metadata: {
@@ -258,6 +299,9 @@ app.post("/initiate-payment", async (req, res) => {
         ip: req.ip,
       },
     };
+    // Force session save with extended TTL
+    req.session.cookie.maxAge = 48 * 60 * 60 * 1000; // 48 hours
+    await req.session.save();
 
     const response = await axios.post(
       "https://api.paystack.co/transaction/initialize",
