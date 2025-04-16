@@ -11,7 +11,11 @@ const PORT = process.env.PORT || 3000;
 
 // Enable CORS for all origins for simplicity (adjust as needed)
 app.use(cors({ credentials: true, origin: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, "public")));
 // Session configuration
 app.use(
   session({
@@ -34,11 +38,6 @@ app.use(
 );
 
 // Parse JSON and URL-encoded payloads
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, "public")));
 
 // Initialize session values once
 app.use((req, res, next) => {
@@ -185,6 +184,10 @@ async function handleOrderingState(input, session, response) {
 
 // Chat endpoint: processes user messages
 app.post("/message", async (req, res) => {
+  console.log("Session ID:", req.sessionID);
+  console.log("Session state:", req.session.state);
+  console.log("Current order:", req.session.currentOrder);
+
   const userInput = req.body.message.trim();
   const response = { messages: [] };
 
