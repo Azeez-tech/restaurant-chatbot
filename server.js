@@ -18,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, "public")));
 // Session configuration
+// Production session configuration for same-origin deployment
 app.use(
   session({
     secret: process.env.SECRET_KEY,
@@ -27,32 +28,50 @@ app.use(
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI,
       collectionName: "sessions",
-      ttl: 24 * 60 * 60, // 1 day
+      ttl: 24 * 60 * 60, // Match cookie maxAge
+      touchAfter: 1800, // 30 minutes between updates
     }),
     cookie: {
-      secure: true, // ✅ Required because Render uses HTTPS
+      secure: true, // Required for Render's HTTPS
       httpOnly: true,
-      sameSite: "Lax", // ✅ Perfect for same-origin deployments
+      sameSite: "Lax", // Can be strict since same origin
       maxAge: 24 * 60 * 60 * 1000,
     },
+    proxy: true, // Required for Render's proxy
   })
 );
 
-// Parse JSON and URL-encoded payloads
-app.use((req, res, next) => {
-  console.log("💡 Incoming Cookie Header:", req.headers.cookie);
-  console.log("💡 Session ID:", req.sessionID);
-  next();
-});
-
-// Initialize session values once
+// Session initialization middleware
 app.use((req, res, next) => {
   if (!req.session.initialized) {
+    req.session.initialized = true;
     req.session.state = "main";
     req.session.currentOrder = [];
     req.session.orderHistory = [];
-    req.session.initialized = true;
+    console.log(`New session initialized: ${req.sessionID}`);
   }
+  next();
+});
+
+// Force session save after each request
+app.use((req, res, next) => {
+  res.on("finish", async () => {
+    try {
+      await new Promise((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error("Session save error:", err);
+            reject(err);
+          } else {
+            console.log("Session persisted:", req.sessionID);
+            resolve();
+          }
+        });
+      });
+    } catch (err) {
+      console.error("Final session save failed:", err);
+    }
+  });
   next();
 });
 
