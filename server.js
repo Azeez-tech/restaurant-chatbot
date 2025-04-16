@@ -9,25 +9,20 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Enable CORS for all origins for simplicity (adjust as needed)
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  })
-);
+app.use(cors({ credentials: true, origin: true }));
 
 // Session configuration
 app.use(
   session({
     name: "chatbot.session",
-    secret: process.env.SECRET_KEY || "defaultsecret",
+    secret: process.env.SECRET_KEY,
     resave: false, // Save session only when modified
     saveUninitialized: false,
     rolling: true,
     cookie: {
       secure: true,
       httpOnly: true,
-      sameSite: "None",
+      sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     },
   })
