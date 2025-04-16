@@ -44,36 +44,13 @@ app.use(
 // Session initialization middleware
 app.use((req, res, next) => {
   if (!req.session.initialized) {
-    req.session.initialized = true;
     req.session.state = "main";
     req.session.currentOrder = [];
     req.session.orderHistory = [];
-    console.log(`New session initialized: ${req.sessionID}`);
+    req.session.initialized = true;
   }
   next();
 });
-
-// Force session save after each request
-// app.use((req, res, next) => {
-//   res.on("finish", async () => {
-//     try {
-//       await new Promise((resolve, reject) => {
-//         req.session.save((err) => {
-//           if (err) {
-//             console.error("Session save error:", err);
-//             reject(err);
-//           } else {
-//             console.log("Session persisted:", req.sessionID);
-//             resolve();
-//           }
-//         });
-//       });
-//     } catch (err) {
-//       console.error("Final session save failed:", err);
-//     }
-//   });
-//   next();
-// });
 
 // Define menu items
 const menuItems = [
