@@ -34,7 +34,7 @@ app.use(
     cookie: {
       secure: true, // Required for Render's HTTPS
       httpOnly: true,
-      sameSite: "Lax", // Can be strict since same origin
+      sameSite: "None", // Can be strict since same origin
       maxAge: 24 * 60 * 60 * 1000,
     },
     proxy: true, // Required for Render's proxy
@@ -237,8 +237,100 @@ app.post("/message", async (req, res) => {
   }
 });
 
-// Payment initialization (using Paystack)
+// Payment initiation endpoint
 app.post("/initiate-payment", async (req, res) => {
+  try {
+    // Save session explicitly
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        console.log("Pre-payment session saved:", req.sessionID);
+        resolve();
+      });
+    });
+
+    // Store session ID with order
+    const paymentData = {
+      amount:
+        req.session.currentOrder.reduce((sum, item) => sum + item.price, 0) *
+        100,
+      email: "customer@example.com",
+      callback_url: process.env.PAYSTACK_CALLBACK_URL,
+      metadata: {
+        sessionId: req.sessionID,
+      },
+    };
+
+    // Initiate Paystack payment
+    const response = await axios.post(
+      "https://api.paystack.co/transaction/initialize",
+      paymentData,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    res.json({
+      authorization_url: response.data.data.authorization_url,
+      sessionId: req.sessionID,
+    });
+  } catch (error) {
+    console.error("Payment initiation error:", error);
+    res.status(500).json({ error: "Payment initialization failed" });
+  }
+});
+
+// Payment callback handler
+app.get("/payment-callback", async (req, res) => {
+  try {
+    const { reference, trxref } = req.query;
+    const sessionId = req.query.session_id;
+
+    // Verify payment
+    const verification = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference || trxref}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    if (verification.data.data.status === "success") {
+      // Rebuild session from stored ID
+      req.sessionStore.get(sessionId, (err, session) => {
+        if (err || !session) {
+          console.error("Session not found:", sessionId);
+          return res.redirect("/?payment=success&session=expired");
+        }
+
+        // Restore session
+        req.sessionID = sessionId;
+        req.session = session;
+        req.session.payment = {
+          status: "completed",
+          reference: verification.data.data.reference,
+        };
+
+        req.session.save((err) => {
+          if (err) console.error("Post-payment save error:", err);
+          res.redirect("/?payment=success");
+        });
+      });
+    } else {
+      res.redirect("/?payment=failed");
+    }
+  } catch (error) {
+    console.error("Callback error:", error);
+    res.redirect("/?payment=error");
+  }
+});
+
+// Payment initialization (using Paystack)
+/*app.post("/initiate-payment", async (req, res) => {
   try {
     const paystackRes = await axios.post(
       "https://api.paystack.co/transaction/initialize",
@@ -265,6 +357,7 @@ app.post("/initiate-payment", async (req, res) => {
 app.get("/payment-callback", (req, res) => {
   res.redirect("/");
 });
+*/
 
 // Start the server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

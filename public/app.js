@@ -56,7 +56,7 @@ function addMessage(text, type) {
 }
 
 // Initiate payment if required
-async function initiatePayment() {
+/*async function initiatePayment() {
   try {
     const response = await fetch("/initiate-payment", {
       method: "POST",
@@ -71,3 +71,54 @@ async function initiatePayment() {
     addMessage("Bot: Payment initialization failed", "bot");
   }
 }
+*/
+
+async function initiatePayment() {
+  try {
+    const response = await fetch("/initiate-payment", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    const data = await response.json();
+
+    // Store session ID in localStorage
+    localStorage.setItem(
+      "pendingPayment",
+      JSON.stringify({
+        sessionId: data.sessionId,
+        url: data.authorization_url,
+      })
+    );
+
+    // Open payment window
+    const paymentWindow = window.open(data.authorization_url, "_blank");
+
+    // Check payment status every 2 seconds
+    const checkPayment = setInterval(async () => {
+      try {
+        const status = await fetch("/payment-status", {
+          credentials: "include",
+        });
+        const result = await status.json();
+
+        if (result.paid) {
+          clearInterval(checkPayment);
+          window.location.reload(true);
+        }
+      } catch (error) {
+        console.error("Payment check error:", error);
+      }
+    }, 2000);
+  } catch (error) {
+    console.error("Payment error:", error);
+    addMessage("Bot: Payment initialization failed", "bot");
+  }
+}
+
+// Add payment status endpoint
+app.get("/payment-status", (req, res) => {
+  res.json({
+    paid: !!req.session?.payment?.status,
+  });
+});
