@@ -3,22 +3,11 @@ const session = require("express-session");
 const path = require("path");
 const axios = require("axios");
 require("dotenv").config();
-const RedisStore = require("connect-redis").RedisStore;
-const { createClient } = require("ioredis");
+const MongoStore = require("connect-mongo");
 const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-  socket: {
-    tls: true, // ensure secure connection
-    rejectUnauthorized: false, // allow Upstash self-signed certs
-  },
-});
-
-redisClient.connect().catch(console.error);
 
 // Enable CORS for all origins for simplicity (adjust as needed)
 app.use(cors({ credentials: true, origin: true }));
@@ -26,11 +15,15 @@ app.use(cors({ credentials: true, origin: true }));
 // Session configuration
 app.use(
   session({
-    store: new RedisStore({ client: redisClient }),
     secret: process.env.SECRET_KEY,
     resave: false, // Save session only when modified
     saveUninitialized: false,
     rolling: true,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
+      ttl: 24 * 60 * 60, // 1 day in seconds
+    }),
     cookie: {
       secure: true,
       httpOnly: true,
