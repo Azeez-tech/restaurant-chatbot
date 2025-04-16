@@ -73,6 +73,9 @@ function addMessage(text, type) {
 }
 */
 
+// public/app.js - Payment Flow
+let paymentWindow = null;
+
 async function initiatePayment() {
   try {
     const response = await fetch("/initiate-payment", {
@@ -80,39 +83,52 @@ async function initiatePayment() {
       credentials: "include",
     });
 
-    const data = await response.json();
+    const { authorization_url, sessionId } = await response.json();
 
     // Store session ID in localStorage
-    localStorage.setItem(
-      "pendingPayment",
-      JSON.stringify({
-        sessionId: data.sessionId,
-        url: data.authorization_url,
-      })
-    );
+    localStorage.setItem("paymentSession", sessionId);
 
-    // Open payment window
-    const paymentWindow = window.open(data.authorization_url, "_blank");
+    // Open payment window with same origin
+    paymentWindow = window.open(authorization_url, "PaymentWindow");
 
-    // Check payment status every 2 seconds
-    const checkPayment = setInterval(async () => {
-      try {
-        const status = await fetch("/payment-status", {
-          credentials: "include",
-        });
-        const result = await status.json();
-
-        if (result.paid) {
-          clearInterval(checkPayment);
-          window.location.reload(true);
-        }
-      } catch (error) {
-        console.error("Payment check error:", error);
+    // Start payment status polling
+    const pollInterval = setInterval(async () => {
+      if (paymentWindow.closed) {
+        clearInterval(pollInterval);
+        checkPaymentStatus();
       }
-    }, 2000);
+    }, 1000);
   } catch (error) {
     console.error("Payment error:", error);
     addMessage("Bot: Payment initialization failed", "bot");
+  }
+}
+
+async function checkPaymentStatus() {
+  try {
+    const response = await fetch("/payment-status", {
+      credentials: "include",
+    });
+
+    const result = await response.json();
+
+    if (result.paid) {
+      addMessage(
+        "Bot: Payment successful! Your order is being processed",
+        "bot"
+      );
+      localStorage.removeItem("paymentSession");
+    } else {
+      addMessage(
+        "Bot: Payment verification failed. Please contact support",
+        "bot"
+      );
+    }
+
+    // Force session refresh
+    window.location.reload();
+  } catch (error) {
+    console.error("Status check error:", error);
   }
 }
 

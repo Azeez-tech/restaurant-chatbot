@@ -29,12 +29,14 @@ app.use(
       mongoUrl: process.env.MONGO_URI,
       collectionName: "sessions",
       ttl: 24 * 60 * 60, // Match cookie maxAge
-      touchAfter: 1800, // 30 minutes between updates
+      autoRemove: "interval",
+      autoRemoveInterval: 60,
     }),
     cookie: {
       secure: true, // Required for Render's HTTPS
       httpOnly: true,
-      sameSite: "None", // Can be strict since same origin
+      sameSite: "None",
+      domain: "https://restaurant-chatbot-6mu4.onrender.com/",
       maxAge: 24 * 60 * 60 * 1000,
     },
     proxy: true, // Required for Render's proxy
@@ -238,38 +240,30 @@ app.post("/message", async (req, res) => {
 });
 
 // Payment initiation endpoint
+// server.js - Payment Endpoints
 app.post("/initiate-payment", async (req, res) => {
   try {
-    // Save session explicitly
-    await new Promise((resolve, reject) => {
-      req.session.save((err) => {
-        if (err) reject(err);
-        console.log("Pre-payment session saved:", req.sessionID);
-        resolve();
-      });
-    });
+    // Force session save with extended TTL
+    req.session.cookie.maxAge = 48 * 60 * 60 * 1000; // 48 hours
+    await req.session.save();
 
-    // Store session ID with order
     const paymentData = {
       amount:
         req.session.currentOrder.reduce((sum, item) => sum + item.price, 0) *
         100,
       email: "customer@example.com",
-      callback_url: process.env.PAYSTACK_CALLBACK_URL,
+      callback_url: `${process.env.PAYSTACK_CALLBACK_URL}/?sessionId=${req.sessionID}`,
       metadata: {
         sessionId: req.sessionID,
+        ip: req.ip,
       },
     };
 
-    // Initiate Paystack payment
     const response = await axios.post(
       "https://api.paystack.co/transaction/initialize",
       paymentData,
       {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
       }
     );
 
@@ -283,46 +277,55 @@ app.post("/initiate-payment", async (req, res) => {
   }
 });
 
-// Payment callback handler
 app.get("/payment-callback", async (req, res) => {
   try {
-    const { reference, trxref } = req.query;
-    const sessionId = req.query.session_id;
+    const { sessionId } = req.query;
 
-    // Verify payment
-    const verification = await axios.get(
-      `https://api.paystack.co/transaction/verify/${reference || trxref}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        },
+    // Rebuild session from storage
+    req.sessionStore.get(sessionId, async (err, session) => {
+      if (err || !session) {
+        return res.redirect("/?error=session_expired");
       }
-    );
 
-    if (verification.data.data.status === "success") {
-      // Rebuild session from stored ID
-      req.sessionStore.get(sessionId, (err, session) => {
-        if (err || !session) {
-          console.error("Session not found:", sessionId);
-          return res.redirect("/?payment=success&session=expired");
+      // Verify payment with Paystack
+      const verification = await axios.get(
+        `https://api.paystack.co/transaction/verify/${req.query.trxref}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
         }
+      );
 
-        // Restore session
-        req.sessionID = sessionId;
-        req.session = session;
-        req.session.payment = {
-          status: "completed",
-          reference: verification.data.data.reference,
-        };
+      if (verification.data.data.status === "success") {
+        // Regenerate session to prevent fixation
+        req.session.regenerate(async (err) => {
+          Object.assign(req.session, {
+            ...session,
+            payment: {
+              status: "completed",
+              reference: verification.data.data.reference,
+              amount: verification.data.data.amount,
+            },
+          });
 
-        req.session.save((err) => {
-          if (err) console.error("Post-payment save error:", err);
+          await req.session.save();
+
+          // Set fresh cookies in response
+          res.setHeader("Set-Cookie", [
+            `connect.sid=${
+              req.sessionID
+            }; Path=/; Secure; SameSite=None; HttpOnly; Max-Age=${
+              24 * 60 * 60
+            }`,
+          ]);
+
           res.redirect("/?payment=success");
         });
-      });
-    } else {
-      res.redirect("/?payment=failed");
-    }
+      } else {
+        res.redirect("/?payment=failed");
+      }
+    });
   } catch (error) {
     console.error("Callback error:", error);
     res.redirect("/?payment=error");
