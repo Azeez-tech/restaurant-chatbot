@@ -247,8 +247,6 @@ app.get("/payment-callback", (req, res) => {
   res.redirect("/");
 });*/
 
-const axios = require("axios");
-
 app.post("/initiate-payment", async (req, res) => {
   try {
     const response = await axios.post(
