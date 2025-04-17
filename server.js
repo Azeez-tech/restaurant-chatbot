@@ -219,7 +219,7 @@ app.post("/message", async (req, res) => {
 // server.js - Payment Endpoints
 
 // Payment initialization (using Paystack)
-app.post("/initiate-payment", async (req, res) => {
+/*app.post("/initiate-payment", async (req, res) => {
   try {
     const paystackRes = await axios.post(
       "https://api.paystack.co/transaction/initialize",
@@ -244,6 +244,39 @@ app.post("/initiate-payment", async (req, res) => {
 
 // Payment callback: handles redirection after payment
 app.get("/payment-callback", (req, res) => {
+  res.redirect("/");
+});*/
+
+const axios = require("axios");
+
+app.post("/initiate-payment", async (req, res) => {
+  try {
+    const response = await axios.post(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        amount: req.body.amount * 100, // Paystack expects amount in Kobo
+        email: "customer@example.com", // Optionally use user email if available
+        callback_url: process.env.PAYSTACK_CALLBACK_URL,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const paymentURL = response.data.data.authorization_url;
+    res.json({ authorization_url: paymentURL });
+  } catch (error) {
+    console.error("Payment error:", error?.response?.data || error.message);
+    res.status(500).json({ error: "Payment initialization failed" });
+  }
+});
+
+app.get("/payment-callback", (req, res) => {
+  // Optional: You can verify the payment here if you want
+  // For now, just redirect user back to main chatbot interface
   res.redirect("/");
 });
 
